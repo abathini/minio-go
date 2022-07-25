@@ -88,6 +88,9 @@ func (p *FileAWSCredentials) Retrieve() (Value, error) {
 	secret := iniProfile.Key("aws_secret_access_key")
 	// Default to empty string if not found.
 	token := iniProfile.Key("aws_session_token")
+	expiration := iniProfile.Key("aws_expiration")
+	expirationTime,_ := time.Parse("2006-01-02T15:04:05Z", expiration.String())
+	p.expirationTime = expirationTime
 
 	p.retrieved = true
 	return Value{
@@ -100,7 +103,16 @@ func (p *FileAWSCredentials) Retrieve() (Value, error) {
 
 // IsExpired returns if the shared credentials have expired.
 func (p *FileAWSCredentials) IsExpired() bool {
-	return !p.retrieved
+	if !p.retrieved{
+		return true
+	}
+	currTime := time.Now().UTC()
+	if 60*60 > p.expirationTime.Sub(currTime).Seconds() {
+		fmt.Println("Expiration Time("+p.expirationTime.String()+") - Current Time("+currTime.String() +") is less than 1 hour")
+		fmt.Println("Returning isExpired as true to reload credentials")
+		return true
+	}
+	return false
 }
 
 // loadProfiles loads from the file pointed to by shared credentials filename for profile.
